@@ -10,6 +10,7 @@ function tcp_listen(port) {
   const one = new Int32Array([1]);
   const level = sys.mac ? 0xffff : 1;
   sys.setsockopt(fd, level, sys.mac ? 4 : 2, sys.ptr(one), 4);
+  sys.setsockopt(fd, level, sys.mac ? 0x200 : 15, sys.ptr(one), 4);
   const at = io_addr("0.0.0.0", Number(port));
   if (at === null) {
     sys.close(fd);

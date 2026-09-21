@@ -8,6 +8,9 @@ uint32_t tcp_listen(uint32_t port, int* out) {
   }
   int one = 1;
   setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+#ifdef SO_REUSEPORT
+  setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one));
+#endif
   struct sockaddr_in at;
   if (io_sys_addr("0.0.0.0", port, &at) < 0) {
     close(fd);
