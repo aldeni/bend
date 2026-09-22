@@ -3,10 +3,9 @@
 
 // Sends what is left; a full socket (non-blocking, so EAGAIN) parks the
 // computation until the socket is writable, and the loop resumes here.
-function tcp_send(socket, data, k) {
+function tcp_send_buffer(socket, b, k) {
   const sys = io_sys();
   const fd = socket;
-  const b = io_bytes(data);
   const again = sys.mac ? 35 : 11;
   const go = (at) => {
     while (at < b.length) {
@@ -27,4 +26,23 @@ function tcp_send(socket, data, k) {
   return go(0);
 }
 
+function tcp_send(socket, data, k) {
+  return tcp_send_buffer(socket, io_bytes(data), k);
+}
+
+// The bytes as they are (0..255), one List cell each, as File.write_bytes
+// takes them; a value past 255 fails with EINVAL before any byte goes out.
+// TCP.send encodes a String as UTF-8, which cannot spell an arbitrary byte.
+function tcp_send_bytes(socket, data, k) {
+  const bytes = [];
+  for (let xs = data; xs.$ === CID(Con); xs = xs.tail) {
+    bytes.push(xs.head);
+  }
+  if (bytes.some((x) => x > 255)) {
+    return io_tup(socket, io_fail(22));
+  }
+  return tcp_send_buffer(socket, Uint8Array.from(bytes), k);
+}
+
 io_eff(CID(TCP.send), tcp_send);
+io_eff(CID(TCP.send_bytes), tcp_send_bytes);

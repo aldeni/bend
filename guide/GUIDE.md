@@ -367,6 +367,12 @@ answers the command line, less the runtime's own options (a `--` ends them). A
 handle (`File`, `Socket`, `Window`) is an affine, opaque value, so every effect
 on one hands it back beside its result, and no program can forge or reuse one.
 
+A file and a socket carry bytes, and each has a text reader and a byte reader:
+`File.read` and `TCP.recv` decode what they read as UTF-8, one read at a time,
+while `File.read_bytes` and `TCP.recv_bytes` answer the bytes as they are
+(0..255), one `List` cell each. Read bytes whenever the payload is not text, or
+when a read may land in the middle of a character.
+
 A Bend program is a set of computations interleaved by one event loop, as in
 Node.js: each runs its pure code (in parallel, on every core) up to its next
 effect, and one that waits on a socket, a sleep or a channel steps aside for the
