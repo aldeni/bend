@@ -362,7 +362,9 @@ unwraps it or exits with the error, and `IO.die` exits with your own. `IO.args`
 answers the command line, less the runtime's own options (a `--` ends them). A
 handle (`File`, `Socket`, `Window`) is an affine, opaque value, so every effect
 on one hands it back beside its result, and no program can forge or reuse one.
-`TCP.listen` sets `SO_REUSEPORT`, so N processes can share one port.
+`TCP.listen` sets `SO_REUSEPORT`, so N processes can share one port; on
+Linux the kernel spreads accepted connections over them, while on macOS the
+duplicate bind is permitted but the load is not spread.
 
 A Bend program is a set of computations interleaved by one event loop, as in
 Node.js: each runs its pure code (in parallel, on every core) up to its next

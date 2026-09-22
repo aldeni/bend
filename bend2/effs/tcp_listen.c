@@ -1,6 +1,15 @@
 // TCP
 // ===
 
+static int reuse_port(int fd) {
+#ifdef SO_REUSEPORT
+  int one = 1;
+  return setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one));
+#else
+  return 0;
+#endif
+}
+
 uint32_t tcp_listen(uint32_t port, int* out) {
   int fd = socket(AF_INET, SOCK_STREAM, 0);
   if (fd < 0) {
@@ -8,9 +17,18 @@ uint32_t tcp_listen(uint32_t port, int* out) {
   }
   int one = 1;
   setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
-#ifdef SO_REUSEPORT
-  setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one));
-#endif
+  // Before the bind, or the kernel has already refused the second one.
+  // Sharing the port is a promise this call makes, so a refusal is the
+  // call's error and not a silent downgrade: without it a second listener
+  // fails later with EADDRINUSE and the real cause is gone. On Linux the
+  // kernel spreads accepted connections over the listeners; on macOS the
+  // option permits the duplicate bind but does not distribute, so N
+  // processes share the port without sharing the load.
+  if (reuse_port(fd) < 0) {
+    uint32_t code = (uint32_t)errno;
+    close(fd);
+    return code;
+  }
   struct sockaddr_in at;
   if (io_sys_addr("0.0.0.0", port, &at) < 0) {
     close(fd);

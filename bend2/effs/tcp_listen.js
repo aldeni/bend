@@ -10,13 +10,18 @@ function tcp_listen(port) {
   const one = new Int32Array([1]);
   const level = sys.mac ? 0xffff : 1;
   sys.setsockopt(fd, level, sys.mac ? 4 : 2, sys.ptr(one), 4);
-  sys.setsockopt(fd, level, sys.mac ? 0x200 : 15, sys.ptr(one), 4);
   const at = io_addr("0.0.0.0", Number(port));
   if (at === null) {
     sys.close(fd);
     return io_fail(22);
   }
-  if (sys.bind(fd, sys.ptr(at), 16) < 0 || sys.listen(fd, 16) < 0
+  // Sharing the port is a promise this call makes, so a refusal is the
+  // call's error and not a silent downgrade: without it a second listener
+  // fails later with EADDRINUSE and the real cause is gone. On Linux the
+  // kernel spreads accepted connections over the listeners; on macOS the
+  // option permits the duplicate bind but does not distribute.
+  if (sys.setsockopt(fd, level, sys.mac ? 0x200 : 15, sys.ptr(one), 4) < 0
+    || sys.bind(fd, sys.ptr(at), 16) < 0 || sys.listen(fd, 16) < 0
     || sys.fcntl(fd, 4, sys.fcntl(fd, 3, 0) | (sys.mac ? 4 : 0x800)) < 0) {
     const code = sys.errno();
     sys.close(fd);
