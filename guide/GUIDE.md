@@ -371,6 +371,12 @@ arrive on; `IO.join` waits for it. Underneath are `IO.spawn`, `Chan.new`,
 `Chan.send`, `Chan.recv` and `Chan.close`. The program ends when every
 computation is done, or reports a deadlock when the remaining ones all wait.
 
+A wait on the network can carry a deadline, `ms` milliseconds from the call.
+`TCP.poll(sock, max, ms)` answers `None{}` if nothing arrives by then, and
+`TCP.connect_within(host, port, ms)` fails with `ETIMEDOUT` (its socket closed)
+if the handshake has not finished by then, where `TCP.connect` waits as long as
+the kernel does.
+
 Every effect in Base is a def whose body is `import "./x.js"` plus a `.c` twin,
 implemented by a host function named after the def, lowercased, dots to
 underscores. You can add your own effects the same way. Only the event loop runs

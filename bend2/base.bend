@@ -307,6 +307,11 @@ def TCP.connect(host: String, port: U32) ->
   import "./effs/tcp_connect.c"
   import "./effs/tcp_connect.js"
 
+def TCP.connect_within(host: String, port: U32, ms: U32) ->
+  IO(Result<&1, &1, U32 & String, Socket>):
+  import "./effs/tcp_connect.c"
+  import "./effs/tcp_connect.js"
+
 def TCP.send(sock: Socket, data: String) ->
   IO(Socket & Result<&1, &1, U32 & String, Unit>):
   import "./effs/tcp_send.c"
