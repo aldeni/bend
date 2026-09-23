@@ -6,25 +6,28 @@ static int reuse_port(int fd) {
   int one = 1;
   return setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one));
 #else
-  return 0;
+  errno = ENOPROTOOPT;
+  return -1;
 #endif
 }
 
-uint32_t tcp_listen(uint32_t port, int* out) {
+// TCP.listen owns its port: a second listener on it fails with EADDRINUSE,
+// which is how an accidental second instance, or a probe for a free port,
+// finds out. TCP.listen_shared (`shared`) sets SO_REUSEPORT first, so the
+// listeners that all asked for it share the port, and a plain TCP.listen on
+// that port still fails.
+uint32_t tcp_listen(uint32_t port, int shared, int* out) {
   int fd = socket(AF_INET, SOCK_STREAM, 0);
   if (fd < 0) {
     return (uint32_t)errno;
   }
   int one = 1;
   setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
-  // Before the bind, or the kernel has already refused the second one.
-  // Sharing the port is a promise this call makes, so a refusal is the
-  // call's error and not a silent downgrade: without it a second listener
-  // fails later with EADDRINUSE and the real cause is gone. On Linux the
-  // kernel spreads accepted connections over the listeners; on macOS the
-  // option permits the duplicate bind but does not distribute, so N
-  // processes share the port without sharing the load.
-  if (reuse_port(fd) < 0) {
+  // Before the bind, or the kernel has already refused the second one. A
+  // refusal is the call's error, not a silent downgrade to an owned port.
+  // On Linux the kernel spreads accepted connections over the listeners;
+  // on macOS it permits the bind but the first listener takes them all.
+  if (shared && reuse_port(fd) < 0) {
     uint32_t code = (uint32_t)errno;
     close(fd);
     return code;
@@ -45,15 +48,30 @@ uint32_t tcp_listen(uint32_t port, int* out) {
   return 0;
 }
 
+static Term tcp_listen_pack(Env e, uint32_t q, int out) {
+  return q != 0 ? io_fail(e, q, NULL) : io_done(e, io_hand(out));
+}
+
+#ifdef CID_TCP_LISTEN
 Term tcp_listen_run(Env e, Term* f, IoWork* w) {
   int out;
-  uint32_t q = tcp_listen((uint32_t)f[0], &out);
-  if (q != 0) {
-    return io_fail(e, q, NULL);
-  }
-  return io_done(e, io_hand(out));
+  uint32_t q = tcp_listen((uint32_t)f[0], 0, &out);
+  return tcp_listen_pack(e, q, out);
 }
 
 static void __attribute__((constructor)) tcp_listen_use(void) {
   io_eff(CID_TCP_LISTEN, tcp_listen_run, 0);
 }
+#endif
+
+#ifdef CID_TCP_LISTEN_SHARED
+Term tcp_listen_shared_run(Env e, Term* f, IoWork* w) {
+  int out;
+  uint32_t q = tcp_listen((uint32_t)f[0], 1, &out);
+  return tcp_listen_pack(e, q, out);
+}
+
+static void __attribute__((constructor)) tcp_listen_shared_use(void) {
+  io_eff(CID_TCP_LISTEN_SHARED, tcp_listen_shared_run, 0);
+}
+#endif
