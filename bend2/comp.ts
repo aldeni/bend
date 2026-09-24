@@ -281,6 +281,8 @@ const OPERATIONS: Record<string, Intr> = Object.setPrototypeOf({
     C:  "($0 < $1)",
     JS: "($0 < $1)",
   },
+  ...tpl_ops("nat_", "min:< max:>", "($0 $o $1 ? $0 : $1)",
+    "($0 $o $1 ? $0 : $1)"),
   nat_divmod: {
     C:    ["($1 == 0 ? 0 : $0 / $1)", "($1 == 0 ? $0 : $0 % $1)"],
     call: true,
