@@ -15,7 +15,6 @@ function tcp_listen(port) {
     sys.close(fd);
     return io_fail(22);
   }
-  // 512, as in tcp_listen.c: the kernel caps it at its own limit.
   if (sys.bind(fd, sys.ptr(at), 16) < 0 || sys.listen(fd, 512) < 0
     || sys.fcntl(fd, 4, sys.fcntl(fd, 3, 0) | (sys.mac ? 4 : 0x800)) < 0) {
     const code = sys.errno();

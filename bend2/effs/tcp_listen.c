@@ -13,8 +13,6 @@ uint32_t tcp_listen(uint32_t port, int* out) {
     close(fd);
     return EINVAL;
   }
-  // 512 in both lanes, as Bun and Node use; the kernel caps it at its own
-  // limit (net.core.somaxconn on Linux, kern.ipc.somaxconn on macOS).
   int bound = bind(fd, (struct sockaddr*)&at, sizeof(at));
   if (bound < 0 || listen(fd, 512) < 0
     || fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK) < 0) {
