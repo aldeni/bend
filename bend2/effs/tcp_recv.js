@@ -1,16 +1,6 @@
 // TCP
 // ===
 
-// The bytes as they are (0..255), one List cell each, as File.read_bytes
-// gives them.
-function tcp_recv_list(b, n) {
-  let xs = { $: CID(Nil) };
-  for (let i = n; i > 0; i -= 1) {
-    xs = { $: CID(Con), head: b[i - 1], tail: xs };
-  }
-  return xs;
-}
-
 // The loop parked the request until the socket was readable; a recv that
 // still finds nothing (the socket is non-blocking) parks again.
 function tcp_recv_with(socket, max, k, pack) {
@@ -45,7 +35,7 @@ function tcp_recv_need() {
 // that is not text, and a character the network split across two reads,
 // do not survive that.
 function tcp_recv_bytes(socket, max, k) {
-  return tcp_recv_with(socket, max, k, tcp_recv_list);
+  return tcp_recv_with(socket, max, k, io_list);
 }
 
 function tcp_recv_bytes_need() {

@@ -51,14 +51,8 @@ static Term tcp_poll_bytes_more(Env e, IoWork* w) {
       ? io_wait_on(w, fd, POLLIN, at, tcp_poll_bytes_more)
       : tcp_poll_end(e, w, io_done(e, term_pak(CID(None), 0)));
   }
-  if (w->code) {
-    return tcp_poll_end(e, w, io_fail(e, w->code, NULL));
-  }
-  Term xs = term_pak(CID(Nil), 0);
-  for (u64 i = w->size; i > 0; i -= 1) {
-    xs = io_node(e, CID(Con), ((uint8_t*)w->data)[i - 1], xs);
-  }
-  return tcp_poll_end(e, w, io_done(e, io_box(e, CID(Some), xs)));
+  return tcp_poll_end(e, w, w->code ? io_fail(e, w->code, NULL) : io_done(e,
+    io_box(e, CID(Some), io_list(e, w->data, w->size))));
 }
 
 Term tcp_poll_bytes_run(Env e, Term* f, IoWork* w) {

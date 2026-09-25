@@ -46,16 +46,11 @@ static void __attribute__((constructor)) tcp_recv_use(void) {
 
 #ifdef CID(TCP.recv_bytes)
 
-// The bytes as they are (0..255), one List cell each, as File.read_bytes
-// gives them. TCP.recv decodes the same bytes as UTF-8, one call at a
-// time: a body that is not text, and a character the network split across
-// two reads, do not survive that.
+// TCP.recv decodes the same bytes as UTF-8, one call at a time: a body
+// that is not text, and a character the network split across two reads,
+// do not survive that.
 static Term tcp_recv_list(Env e, IoWork* w) {
-  Term xs = term_pak(CID(Nil), 0);
-  for (u64 i = w->size; i > 0; i -= 1) {
-    xs = io_node(e, CID(Con), ((uint8_t*)w->data)[i - 1], xs);
-  }
-  return io_done(e, xs);
+  return io_done(e, io_list(e, w->data, w->size));
 }
 
 static Term tcp_recv_bytes_more(Env e, IoWork* w) {

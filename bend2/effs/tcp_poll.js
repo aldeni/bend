@@ -1,20 +1,6 @@
 // TCP
 // ===
 
-// TCP.poll(sock, max, ms) is recv with a deadline: a recv that finds
-// nothing parks on the socket and on the clock, whichever fires first;
-// past the deadline it answers None{}, else Some{data} ("" is the peer's
-// close, as TCP.recv answers it).
-// The bytes as they are (0..255), one List cell each, as File.read_bytes
-// gives them.
-function tcp_poll_list(b, n) {
-  let xs = { $: CID(Nil) };
-  for (let i = n; i > 0; i -= 1) {
-    xs = { $: CID(Con), head: b[i - 1], tail: xs };
-  }
-  return xs;
-}
-
 function tcp_poll_with(socket, max, ms, k, pack) {
   const sys = io_sys();
   const fd = socket;
@@ -38,6 +24,10 @@ function tcp_poll_with(socket, max, ms, k, pack) {
   return go();
 }
 
+// TCP.poll(sock, max, ms) is recv with a deadline: a recv that finds
+// nothing parks on the socket and on the clock, whichever fires first;
+// past the deadline it answers None{}, else Some{data} ("" is the peer's
+// close, as TCP.recv answers it).
 function tcp_poll(socket, max, ms, k) {
   return tcp_poll_with(socket, max, ms, k, io_text);
 }
@@ -45,7 +35,7 @@ function tcp_poll(socket, max, ms, k) {
 // TCP.poll with the bytes as they are, the pair of TCP.recv_bytes: the
 // deadline is the same, only the answer's shape differs.
 function tcp_poll_bytes(socket, max, ms, k) {
-  return tcp_poll_with(socket, max, ms, k, tcp_poll_list);
+  return tcp_poll_with(socket, max, ms, k, io_list);
 }
 
 io_eff(CID(TCP.poll), tcp_poll);
