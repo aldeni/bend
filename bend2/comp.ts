@@ -5602,8 +5602,6 @@ static Term io_node(Env e, u64 cid, Term a, Term b) {
   return term_ctr(cid, l);
 }
 
-// io_list is io_str's twin for bytes: n bytes as a List, one cell each,
-// none decoded. A program that has no List has no use for it.
 #if defined(CID(Nil)) && defined(CID(Con))
 static Term io_list(Env e, const char* p, u64 n) {
   Term xs = term_pak(CID(Nil), 0);
@@ -6324,8 +6322,6 @@ function io_text(b, n) {
   return new TextDecoder("utf-8", { ignoreBOM: true }).decode(b.subarray(0, n));
 }
 
-// io_list is io_text's twin for bytes: the first n bytes of b as a List,
-// one cell each, none decoded.
 function io_list(b, n) {
   let xs = { $: "Nil" };
   for (let i = n; i > 0; i -= 1) {

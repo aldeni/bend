@@ -32,8 +32,6 @@ function tcp_poll(socket, max, ms, k) {
   return tcp_poll_with(socket, max, ms, k, io_text);
 }
 
-// TCP.poll with the bytes as they are, the pair of TCP.recv_bytes: the
-// deadline is the same, only the answer's shape differs.
 function tcp_poll_bytes(socket, max, ms, k) {
   return tcp_poll_with(socket, max, ms, k, io_list);
 }

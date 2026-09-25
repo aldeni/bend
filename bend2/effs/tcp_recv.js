@@ -31,9 +31,6 @@ function tcp_recv_need() {
   return { read: true };
 }
 
-// TCP.recv decodes the same bytes as UTF-8, one call at a time: a body
-// that is not text, and a character the network split across two reads,
-// do not survive that.
 function tcp_recv_bytes(socket, max, k) {
   return tcp_recv_with(socket, max, k, io_list);
 }
