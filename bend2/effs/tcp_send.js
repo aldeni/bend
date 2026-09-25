@@ -30,18 +30,11 @@ function tcp_send(socket, data, k) {
   return tcp_send_buffer(socket, io_bytes(data), k);
 }
 
-// The bytes as they are (0..255), one List cell each, as File.write_bytes
-// takes them; a value past 255 fails with EINVAL before any byte goes out.
-// TCP.send encodes a String as UTF-8, which cannot spell an arbitrary byte.
 function tcp_send_bytes(socket, data, k) {
-  const bytes = [];
-  for (let xs = data; xs.$ === CID(Con); xs = xs.tail) {
-    bytes.push(xs.head);
-  }
-  if (bytes.some((x) => x > 255)) {
-    return io_tup(socket, io_fail(22));
-  }
-  return tcp_send_buffer(socket, Uint8Array.from(bytes), k);
+  const bytes = io_clist(data);
+  return bytes === null
+    ? io_tup(socket, io_fail(22))
+    : tcp_send_buffer(socket, bytes, k);
 }
 
 io_eff(CID(TCP.send), tcp_send);

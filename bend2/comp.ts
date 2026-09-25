@@ -5612,6 +5612,28 @@ static Term io_list(Env e, const char* p, u64 n) {
   }
   return xs;
 }
+
+// io_clist is io_cstr's twin for a List: every value 0..255 becomes one
+// byte; past 255 it sets *bad but still drains and frees every cell.
+static char* io_clist(Env e, Term xs, u64* len, int* bad) {
+  u64   cap = 64;
+  u64   n   = 0;
+  char* buf = io_mem(malloc(cap));
+  *bad = 0;
+  while (term_aux(xs) == CID(Con)) {
+    Term fb[2];
+    spare_free(e, cls_fit(2), ctr_take(e, xs, 2, fb));
+    if (n == cap) {
+      cap *= 2;
+      buf = io_mem(realloc(buf, cap));
+    }
+    *bad = fb[0] > 255 ? 1 : *bad;
+    buf[n++] = (char)fb[0];
+    xs = fb[1];
+  }
+  *len = n;
+  return buf;
+}
 #endif
 
 // io_str decodes UTF-8 as WHATWG does: a broken sequence yields one U+FFFD
@@ -6310,6 +6332,16 @@ function io_list(b, n) {
     xs = { $: "Con", head: b[i - 1], tail: xs };
   }
   return xs;
+}
+
+// io_clist is io_bytes's twin for a List: 0..255 becomes a byte, past
+// 255 answers null.
+function io_clist(xs) {
+  const bytes = [];
+  for (; xs.$ === "Con"; xs = xs.tail) {
+    bytes.push(xs.head);
+  }
+  return bytes.some((x) => x > 255) ? null : Uint8Array.from(bytes);
 }
 
 function io_addr(host, port) {
