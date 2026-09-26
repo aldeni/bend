@@ -29,7 +29,7 @@ import * as Comp from "./comp.ts";
 // Constants
 // =========
 
-const VERSION = "2.0.27";
+const VERSION = "2.0.29";
 
 const HELP = `Bend ${VERSION}: check, run, build and publish Bend programs.
 
@@ -528,7 +528,7 @@ async function cli_link(named: string, hash: string): Promise<void> {
 function named_parts(named: string): [string, string] {
   const m = Bend.NAMED.exec(named);
   return m === null ? cli_fail("a package is named <name>@<version>: a-z, 0-9 and -,"
-    + " 12 to 64 characters, at four numbers like 1.0.0.0") : [m[1], m[2]];
+    + " 1 to 64 characters, at four numbers like 1.0.0.0") : [m[1], m[2]];
 }
 
 // hub_check reads the key (a login when there is none), then asks the
@@ -774,7 +774,7 @@ async function book_read(file: string, base?: Bend.Book,
     cli_fail("PROOF.bend must import ./LAWS.bend");
   }
   Bend.book_valid(book, base?.order.length ?? 0);
-  const hols = book.hols + book.open;
+  const hols = book.hols;
   if (hols > 0) {
     throw "Error: " + String(hols) + " TODO" + (hols === 1 ? "" : "s")
       + " found.\nThe code is incomplete, and not a valid proof yet.";

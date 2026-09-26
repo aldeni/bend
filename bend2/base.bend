@@ -175,6 +175,12 @@ def IO.args() -> IO(List<String>):
   import "./effs/args.c"
   import "./effs/args.js"
 
+def Process.run(program: String, args: List<String>, input: String,
+  max_output: U32, timeout_ms: U32) ->
+  IO(Result<&1, &1, U32 & String, U32 & (String & String)>):
+  import "./effs/process_run.c"
+  import "./effs/process_run.js"
+
 def IO.die(-A: Type, code: U32, msg: String) -> IO(A):
   R => k => Halt{code, msg}
 
@@ -203,6 +209,10 @@ def IO.sleep(ms: U32) -> IO(Unit):
 def IO.now() -> IO(Nat):
   import "./effs/now.c"
   import "./effs/now.js"
+
+def IO.thread_count() -> IO(U32):
+  import "./effs/thread_count.c"
+  import "./effs/thread_count.js"
 
 def Chan.new(-A: Type, room: U32) -> IO(Chan(A)):
   import "./effs/chan.c"
@@ -2084,13 +2094,6 @@ law Nat.read.go:
   for +acc : Nat
   Maybe<&2, Nat>
 
-def Nat.read.max() -> Nat:
-  Nat.mul(U32.to_nat(16777215), U32.to_nat(16777217))
-
-def Nat.read.fit(acc: Nat, qr: Nat & Nat) -> Bool:
-  (q, r) = qr
-  Bool.not(Nat.is_lt(q, acc))
-
 def Nat.read.if(t: String, acc: Nat, d: U32, ok: Bool) -> Maybe<&2, Nat>:
   match ok:
     case True{}:
@@ -2104,15 +2107,40 @@ def Nat.read.go(s, acc):
       Some{acc}
     case SCon{Chr{x}, t}:
       +d = U32.sub(x, 48)
-      Nat.read.if(t, acc, d, Bool.and(U32.is_lt(d, 10), Nat.read.fit(acc,
-        Nat.divmod(Nat.sub(Nat.read.max(), U32.to_nat(d)), 10n))))
+      Nat.read.if(t, acc, d, U32.is_lt(d, 10))
+
+# 2^48-1 is the text 281474976710655. Past leading zeros, fewer than
+# fifteen characters fit, more do not, and fifteen compare as text;
+# Nat.read.go still refuses a non-digit. The gate is a def, not a
+# Bool.pick: an argument is built before the call, and reading a string
+# that does not fit would build a Nat past the bound. A law that reads
+# "7" never builds the unary nat (each digit once divided it).
+def Nat.read.trim(s: String) -> String:
+  match s:
+    case SCon{'0', t}:
+      Nat.read.trim(t)
+    case t:
+      t
+
+def Nat.read.fits(+s: String) -> Bool:
+  +n = String.length(s)
+  Bool.or(Nat.is_lt(n, 15n),
+    Bool.and(Nat.is_eq(n, 15n), String.is_le(s, "281474976710655")))
+
+def Nat.read.gate(+s: String, ok: Bool) -> Maybe<&2, Nat>:
+  match ok:
+    case True{}:
+      Nat.read.go(s, 0n)
+    case False{}:
+      None{}
 
 def Nat.read(s: String) -> Maybe<&2, Nat>:
   match s:
     case SNil{}:
       None{}
     case SCon{h, t}:
-      Nat.read.go(SCon{h, t}, 0n)
+      +u = Nat.read.trim(SCon{h, t})
+      Nat.read.gate(u, Nat.read.fits(u))
 
 law U32.show.go:
   for f   : Nat

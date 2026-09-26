@@ -367,6 +367,19 @@ answers the command line, less the runtime's own options (a `--` ends them). A
 handle (`File`, `Socket`, `Window`) is an affine, opaque value, so every effect
 on one hands it back beside its result, and no program can forge or reuse one.
 
+`Process.run(program, args, input, max_output, timeout_ms)` starts an
+executable directly, with literal arguments rather than a shell. It inherits
+the current directory and environment, writes UTF-8 `input` to its stdin, and
+answers `Done{(status, (stdout, stderr))}` even when the exit status is not
+zero. Both limits must be positive; failure to start, a timeout, or stdout
+and stderr exceeding `max_output` bytes together answer `Fail`. The call
+waits for the direct child and drains ready output; a descendant holding an
+inherited pipe open does not extend the wait. Timeouts do not kill descendants.
+A native build runs the child on an IO helper thread; the JavaScript lane
+blocks while the child runs. On Linux, native builds need glibc 2.34 or newer
+to close inherited descriptors. It does not sandbox the child: callers must
+whether a command is trusted before executing it.
+
 A Bend program is a set of computations interleaved by one event loop, as in
 Node.js: each runs its pure code (in parallel, on every core) up to its next
 effect, and one that waits on a socket, a sleep or a channel steps aside for the
@@ -592,7 +605,7 @@ do M<xs.., R>:                           # a monadic block over M.bind, M.pure
 
 Inside `(.. : T)`, `+ - * / %` call `T.add` through `T.mod`, `.&. .|. .^.` the
 bit operations, `<< >>` the shifts (by a `Nat`), and `< <= > >=` the `T.is_lt`
-family; without a `: T` they belong to `Nat`. `&& ||` work on `Bool` and `++` on
+family; without a `: T` they are refused. `&& ||` work on `Bool` and `++` on
 `String` anywhere. Operators need spaces on both sides.
 Equality of values is a call, `T.is_eq(a, b)`; `==` is only the type.
 A `Nat` literal past `256n` is `U32.to_nat(n)` underneath, up to `4294967295n`.
