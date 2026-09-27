@@ -1270,7 +1270,7 @@ function lams(ps: Array<[Q, number, ...unknown[]]>, b: O): O {
 }
 
 function inferable(o: O): boolean {
-  return o.$ === "App" ? inferable(o.f) : ["Var", "Ref", "Ann", "Typ", "All", "Enu", "Eql"].includes(o.$);
+  return o.$ === "App" ? inferable(o.f) && inferable(o.x) : ["Var", "Ref", "Ann", "Typ", "All", "Enu", "Eql"].includes(o.$);
 }
 
 // the live uses of level l in o, as the kernel counts them
