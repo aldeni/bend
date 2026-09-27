@@ -29,10 +29,9 @@ def main(x, y):
           K3{}
     case F{}:
       K2{}
-
 #|SOME PROOFS FAIL
 #|Error:
-#|- message  : a match on a parameter or field (this name is a def or a consumed binder: give the value its own def)
+#|- message  : a match in binder order (x is bound before y, which was matched first: match x before y, or give the value its own def)
 #|Location:
 #|24 |     case T{}:
 #|25>|       match x:

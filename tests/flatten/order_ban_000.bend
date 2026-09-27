@@ -23,10 +23,9 @@ law main:
 
 def main():
   Zy{}
-
 #|SOME PROOFS FAIL
 #|Error:
-#|- message  : a match on a parameter or field (this name is a def or a consumed binder: give the value its own def)
+#|- message  : a match in binder order (a is bound before b, which was matched first: match a before b, or give the value its own def)
 #|Location:
 #|14 | def f(a, b):
 #|15>|   match b, a:

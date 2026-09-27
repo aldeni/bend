@@ -2628,9 +2628,9 @@ export function body_sub(b: Body, i: number, v: Patt): Body {
   }
 }
 
-export function match_flatten(m: Match, vars: PVar[], fr: () => number): LTerm {
+export function match_flatten(m: Match, vars: PVar[], fr: () => number, past: Array<[PVar, PVar]> = []): LTerm {
   if (m.e.length === 0 && m.r.length > 0) {
-    return body_flatten(m.r[0].f, vars, fr);
+    return body_flatten(m.r[0].f, vars, fr, past);
   } else if (m.e.length === 0) {
     throw Err(book_nil(), ctx_nil(), "a case (this match has no row to return)", undefined, m.s);
   } else if (vars.length === 0) {
@@ -2640,9 +2640,13 @@ export function match_flatten(m: Match, vars: PVar[], fr: () => number): LTerm {
     }
     switch (e.$) {
       case "Var": {
-        throw Err(book_nil(), ctx_nil(), "a match on a parameter or field (this"
-          + " name is a def or a consumed binder: give the value its own def)",
-          undefined, e.s);
+        const w = past.find(([u]) => u.i === e.i);
+        throw Err(book_nil(), ctx_nil(), w === undefined
+          ? "a match on a parameter or field (this name is a def or a consumed"
+            + " binder: give the value its own def)"
+          : "a match in binder order (" + w[0].k + " is bound before " + w[1].k
+            + ", which was matched first: match " + w[0].k + " before "
+            + w[1].k + ", or give the value its own def)", undefined, e.s);
       }
       case "Ctr":
       case "Lit": {
@@ -2666,7 +2670,7 @@ export function match_flatten(m: Match, vars: PVar[], fr: () => number): LTerm {
         }
         return { p: row.p.slice(1), f: body_sub(row.f, p0.i, w) };
       });
-      return match_flatten({ $: "Match", e: m.e.slice(1), r: rs, s: m.s }, vars.map((u) => u === v ? w : u), fr);
+      return match_flatten({ $: "Match", e: m.e.slice(1), r: rs, s: m.s }, vars.map((u) => u === v ? w : u), fr, past);
     } else if (v === x) {
       if (c === null) {
         return Efq(m.s);
@@ -2699,13 +2703,13 @@ export function match_flatten(m: Match, vars: PVar[], fr: () => number): LTerm {
         });
         const pe = xs.map((q) => patt_term(q)).concat(m.e.slice(1));
         const pv = xs.concat(vars.slice(1));
-        const pt = match_flatten({ $: "Match", e: pe, r: ps, s: m.s }, pv, fr);
+        const pt = match_flatten({ $: "Match", e: pe, r: ps, s: m.s }, pv, fr, past);
         const ds = m.r.filter((row) => row.p[0].$ !== "PCtr" || row.p[0].k !== c.k);
-        const dt = match_flatten({ $: "Match", e: m.e, r: ds, s: m.s }, vars, fr);
+        const dt = match_flatten({ $: "Match", e: m.e, r: ds, s: m.s }, vars, fr, past);
         return Mat(c.k, pt, dt, c.s);
       }
     } else {
-      const t = match_flatten(m, vars.slice(1), fr);
+      const t = match_flatten(m, vars.slice(1), fr, v === undefined ? past : [...past, [x, v]]);
       return Lam(x.k, x.i, t, x.s, x.q);
     }
   }
@@ -2727,12 +2731,12 @@ export function patt_term(q: Patt, s?: Span): LTerm {
   }
 }
 
-export function body_flatten(b: Body, vars: PVar[], fr: () => number): LTerm {
+export function body_flatten(b: Body, vars: PVar[], fr: () => number, past: Array<[PVar, PVar]> = []): LTerm {
   switch (b.$) {
     case "Local": {
       if (b.k.length === 1 && b.k[0].$ === "PCtr") {
         const r: Case = { p: [b.k[0]], f: b.f };
-        return match_flatten({ $: "Match", e: [b.v[0]], r: [r], s: b.v[0].s }, vars, fr);
+        return match_flatten({ $: "Match", e: [b.v[0]], r: [r], s: b.v[0].s }, vars, fr, past);
       }
       const ws = b.k as PVar[];
       let g = body_flatten(b.f, ws, fr);
@@ -2743,17 +2747,17 @@ export function body_flatten(b: Body, vars: PVar[], fr: () => number): LTerm {
         g = g.f;
       }
       const x = Let(ws.map((w) => w.k), ws.map((w) => w.i), b.v, g, ws[0].s, ws.map((w) => quant_dem(b.q, w.q)));
-      return body_flatten(x, vars, fr);
+      return body_flatten(x, vars, fr, past);
     }
     case "Match": {
-      return match_flatten(b, vars, fr);
+      return match_flatten(b, vars, fr, past);
     }
     default: {
       if (vars.length === 0) {
         return b;
       } else {
         const v = vars[0];
-        const f = body_flatten(b, vars.slice(1), fr);
+        const f = body_flatten(b, vars.slice(1), fr, past);
         return Lam(v.k, v.i, f, v.s, v.q);
       }
     }
