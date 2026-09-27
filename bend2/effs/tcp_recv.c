@@ -19,6 +19,9 @@ static Term tcp_recv_with(Env e, IoWork* w, IoPack more,
 
 static Term tcp_recv_start(Env e, Term* f, IoWork* w, IoPack more) {
   w->hand = (intptr_t)io_hand_v(f[0]);
+  if (f[1] == 0) {
+    return io_tup(e, io_hand(w->hand), io_fail(e, EINVAL, NULL));
+  }
   w->made = f[1] < INT32_MAX ? (intptr_t)f[1] : INT32_MAX;
   w->data = io_mem(malloc((size_t)w->made + 1));
   return more(e, w);

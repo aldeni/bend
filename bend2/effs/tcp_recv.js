@@ -5,6 +5,9 @@
 // still finds nothing (the socket is non-blocking) parks again. What it
 // finds, read makes a String (io_text) or a List of bytes (io_list).
 function tcp_recv_with(socket, max, k, read) {
+  if (Number(max) === 0) {
+    return io_tup(socket, io_fail(22));
+  }
   const sys = io_sys();
   const fd = socket;
   const b = new Uint8Array(Math.max(Number(max), 1));

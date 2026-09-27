@@ -24,6 +24,9 @@ static Term tcp_poll_more(Env e, IoWork* w) {
 
 Term tcp_poll_run(Env e, Term* f, IoWork* w) {
   w->hand = (intptr_t)io_hand_v(f[0]);
+  if (f[1] == 0) {
+    return io_tup(e, io_hand(w->hand), io_fail(e, EINVAL, NULL));
+  }
   w->made = f[1] < INT32_MAX ? (intptr_t)f[1] : INT32_MAX;
   w->data = io_mem(malloc((size_t)w->made + 1));
   return io_wait_on(w, (int)w->hand, POLLIN,
