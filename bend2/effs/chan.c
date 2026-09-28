@@ -83,6 +83,39 @@ static Term chan_take(ChanRow* row) {
   return v;
 }
 
+static void chan_free(ChanRow* row);
+
+// A send that does not wait: a parked receiver takes the value, else
+// the ring while it has room. Answers whether the value went.
+static bool chan_put(Env e, ChanRow* row, Term v) {
+  if (row->wait != NULL && row->wait->next->item == TERM_HOLE) {
+    chan_wake(row, chan_some(e, v));
+    return true;
+  }
+  if (row->size < row->room) {
+    row->ring[(row->head + row->size) % row->room] = v;
+    row->size += 1;
+    return true;
+  }
+  return false;
+}
+
+// A receive that does not wait: a value from the ring, else from a
+// parked sender, else TERM_HOLE (a program makes no such value).
+static Term chan_get(Env e, ChanRow* row) {
+  if (row->size > 0) {
+    Term v = chan_take(row);
+    if (row->shut && row->size == 0) {
+      chan_free(row);
+    }
+    return v;
+  }
+  if (row->wait != NULL && row->wait->next->item != TERM_HOLE) {
+    return chan_wake(row, chan_bool(true));
+  }
+  return TERM_HOLE;
+}
+
 static void chan_free(ChanRow* row) {
   free(row->ring);
   row->live = 0;
@@ -122,16 +155,7 @@ Term chan_send_run(Env e, Term* f, IoWork* w) {
     term_drop(e, f[1]);
     return chan_bool(false);
   }
-  if (row->wait != NULL && row->wait->next->item == TERM_HOLE) {
-    chan_wake(row, chan_some(e, f[1]));
-    return chan_bool(true);
-  }
-  if (row->size < row->room) {
-    row->ring[(row->head + row->size) % row->room] = f[1];
-    row->size += 1;
-    return chan_bool(true);
-  }
-  return chan_park(row, w, f[1]);
+  return chan_put(e, row, f[1]) ? chan_bool(true) : chan_park(row, w, f[1]);
 }
 
 static void __attribute__((constructor)) chan_send_use(void) {
@@ -147,15 +171,9 @@ Term chan_recv_run(Env e, Term* f, IoWork* w) {
   if (row == NULL) {
     return term_pak(CID(None), 0);
   }
-  if (row->size > 0) {
-    Term v = chan_take(row);
-    if (row->shut && row->size == 0) {
-      chan_free(row);
-    }
+  Term v = chan_get(e, row);
+  if (v != TERM_HOLE) {
     return chan_some(e, v);
-  }
-  if (row->wait != NULL && row->wait->next->item != TERM_HOLE) {
-    return chan_some(e, chan_wake(row, chan_bool(true)));
   }
   if (row->shut) {
     chan_free(row);
@@ -166,6 +184,51 @@ Term chan_recv_run(Env e, Term* f, IoWork* w) {
 
 static void __attribute__((constructor)) chan_recv_use(void) {
   io_eff(CID(Chan.recv), chan_recv_run, 0);
+}
+
+#endif
+
+#ifdef CID(Chan.try_send)
+
+// A send that answers at once: False on a full or closed channel, and
+// the value is dropped, as Chan.send drops it on a closed one.
+Term chan_try_send_run(Env e, Term* f, IoWork* w) {
+  ChanRow* row = chan_at(f[0]);
+  if (row != NULL && !row->shut && chan_put(e, row, f[1])) {
+    return chan_bool(true);
+  }
+  term_drop(e, f[1]);
+  return chan_bool(false);
+}
+
+static void __attribute__((constructor)) chan_try_send_use(void) {
+  io_eff(CID(Chan.try_send), chan_try_send_run, 0);
+}
+
+#endif
+
+#ifdef CID(Chan.try_recv)
+
+// A receive that answers at once: Got{value}, Wait{} while nothing is
+// ready, Closed{} once the channel is closed and drained.
+Term chan_try_recv_run(Env e, Term* f, IoWork* w) {
+  ChanRow* row = chan_at(f[0]);
+  if (row == NULL) {
+    return term_pak(CID(Closed), 0);
+  }
+  Term v = chan_get(e, row);
+  if (v != TERM_HOLE) {
+    return io_box(e, CID(Got), v);
+  }
+  if (row->shut) {
+    chan_free(row);
+    return term_pak(CID(Closed), 0);
+  }
+  return term_pak(CID(Wait), 0);
+}
+
+static void __attribute__((constructor)) chan_try_recv_use(void) {
+  io_eff(CID(Chan.try_recv), chan_try_recv_run, 0);
 }
 
 #endif

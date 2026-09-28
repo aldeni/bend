@@ -83,6 +83,11 @@ type Event is Data:
   Scroll{x: U32, y: U32, dx: F32, dy: F32}
   Close{}
 
+type Chan.Poll<a, -A: Kind(a)> is Kind(a):
+  Wait{}
+  Closed{}
+  Got{value: A}
+
 type Map<a, -V: Kind(a)> is Kind(a):
   MTip{}
   MLeaf{key: String, val: V}
@@ -231,6 +236,14 @@ def Chan.recv(-A: Type, chan: Chan(A)) -> IO(Maybe<&1, A>):
   import "./effs/chan.js"
 
 def Chan.close(-A: Type, chan: Chan(A)) -> IO(Unit):
+  import "./effs/chan.c"
+  import "./effs/chan.js"
+
+def Chan.try_send(-A: Type, chan: Chan(A), value: A) -> IO(Bool):
+  import "./effs/chan.c"
+  import "./effs/chan.js"
+
+def Chan.try_recv(-A: Type, chan: Chan(A)) -> IO(Chan.Poll<&1, A>):
   import "./effs/chan.c"
   import "./effs/chan.js"
 
