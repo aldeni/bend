@@ -31,7 +31,7 @@ def main(x, y):
       K2{}
 #|SOME PROOFS FAIL
 #|Error:
-#|- message  : a match in binder order (x is bound before y, which was matched first: match x before y, or give the value its own def)
+#|- message  : a match in binder order (x is bound before y, which was matched first: match x first, or give the value its own def)
 #|Location:
 #|24 |     case T{}:
 #|25>|       match x:

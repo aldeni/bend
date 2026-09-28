@@ -29,7 +29,7 @@ def main():
   Zy2{}
 #|SOME PROOFS FAIL
 #|Error:
-#|- message  : a match in binder order (a is bound before b, which was matched first: match a before b, or give the value its own def)
+#|- message  : a match in binder order (a is bound before b, which was matched first: match a first, or give the value its own def)
 #|Location:
 #|18 |     case Pp2{a, b}:
 #|19>|       match b, a:

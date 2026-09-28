@@ -2644,9 +2644,10 @@ export function match_flatten(m: Match, vars: PVar[], fr: () => number, past: Ar
         throw Err(book_nil(), ctx_nil(), w === undefined
           ? "a match on a parameter or field (this name is a def or a consumed"
             + " binder: give the value its own def)"
-          : "a match in binder order (" + w[0].k + " is bound before " + w[1].k
-            + ", which was matched first: match " + w[0].k + " before "
-            + w[1].k + ", or give the value its own def)", undefined, e.s);
+          : "a match in binder order (" + w[0].k + " is bound before "
+            + (/^_\d+$/.test(w[1].k) ? "a field" : w[1].k) + ", which was"
+            + " matched first: match " + w[0].k + " first, or give the value"
+            + " its own def)", undefined, e.s);
       }
       case "Ctr":
       case "Lit": {

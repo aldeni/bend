@@ -19,7 +19,7 @@ def main() -> Nat:
   f(3n, 2n)
 #|SOME PROOFS FAIL
 #|Error:
-#|- message  : a match in binder order (a is bound before b, which was matched first: match a before b, or give the value its own def)
+#|- message  : a match in binder order (a is bound before b, which was matched first: match a first, or give the value its own def)
 #|Location:
 #|11 |     case y, 1n+q:
 #|12>|       match y:

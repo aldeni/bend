@@ -20,10 +20,9 @@ def f(t: Ty, mv: Maybe<&2, U32>) -> String:
 
 def main() -> IO(Unit):
   IO.print(f(TStr{}, Some{1}))
-
 #|SOME PROOFS FAIL
 #|Error:
-#|- message  : a match in binder order (t is bound before mv, which was matched first: match t before mv, or give the value its own def)
+#|- message  : a match in binder order (t is bound before mv, which was matched first: match t first, or give the value its own def)
 #|Location:
 #|14 |     case Some{v}:
 #|15>|       match t:
