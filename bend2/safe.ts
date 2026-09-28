@@ -1170,7 +1170,7 @@ function word_ref(e: Safe, T: Name, n: number): O {
 // column it rebuilds only in place)
 function let_term(e: Safe, s: Scope, x: Extract<HTerm, { $: "Let" }>, live: boolean, put: Set<number> = new Set()): O {
   let s2 = s;
-  const ls: Array<[Q, number, O, number]> = [];
+  const ls: Array<[Q, number, O, number, (() => O) | null]> = [];
   for (let j = 0; j < x.k.length; j++) {
     const q = quant(x.q[j]);
     // a parallel let's value sees s's variables, below the lets before it
@@ -1181,9 +1181,9 @@ function let_term(e: Safe, s: Scope, x: Extract<HTerm, { $: "Let" }>, live: bool
       s2 = scope_bind(s2, v, V, false);
     } else {
       const l = s2.D;
-      const w: O = inferable(v) ? v : V === null ? oos("a let with no known type")
-        : { $: "Ann", x: v, T: term(e, at, V, false) };
-      ls.push([q, l, w, j]);
+      const T = V === null ? null : () => term(e, at, V, false);
+      const w: O = inferable(v) ? v : T === null ? oos("a let with no known type") : { $: "Ann", x: v, T: T() };
+      ls.push([q, l, w, j, T]);
       s2 = scope_kq(scope_bind(s2, { $: "Var", l }, V, true), l, q);
     }
   }
@@ -1193,7 +1193,14 @@ function let_term(e: Safe, s: Scope, x: Extract<HTerm, { $: "Let" }>, live: bool
   if (more.length > 0) {
     return let_term(e, s, x, live, new Set([...put, ...more]));
   }
-  return ls.reduceRight<O>((b, [q, l, v]) => ({ $: "Let", q: q === 1 && uses(b, l) > 1 ? 2 : q, l, v, f: b }), f);
+  // a let the kernel reads at quantity 2 has its value inferred and the
+  // type checked against *2 as inferred, before any β-reduction (bend2's
+  // instantiation reduces as it builds): it goes out with bend2's type
+  return ls.reduceRight<O>((b, [q, l, v, , T]) => {
+    const q2: Q = q === 1 && uses(b, l) > 1 ? 2 : q;
+    const w = q2 === 2 && v.$ !== "Ann" && T !== null ? { $: "Ann", x: v, T: T() } : v;
+    return { $: "Let", q: q2, l, v: w, f: b };
+  }, f);
 }
 
 // a rewrite: the kernel's J, whose motive binds the endpoint at l and
