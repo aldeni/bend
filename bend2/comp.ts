@@ -2848,9 +2848,8 @@ function emit_chain(fl: File, cond: (i: number) => string,
 // namespace, else as is. An effect source is read once, in one namespace.
 
 function c_ids(fl: File, src: string, m = ""): string {
-  const re = /\/\/[^\n]*|\/\*[^]*?\*\/|\b([CF]ID)\(([\w./~-]+)\)/g;
-  return src.replace(re, (t, p, k) => {
-    if (p === undefined) {
+  return src.replace(/\/\/(?:\\\n|.)*|\/\*[^]*?\*\/|"(?:\\[^]|[^"\\\n])*"|'(?:\\[^]|[^'\\\n])*'|`(?:\\[^]|[^`\\])*`|\b([CF]ID)\(([\w./~-]+)\)/g, (t, p, k) => {
+    if (!p) {
       return t;
     }
     const q = [m === "" ? k : m + "." + k, k].find((q) => q in fl.book.ctrs
