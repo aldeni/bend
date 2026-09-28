@@ -28,7 +28,7 @@ Term tcp_poll_run(Env e, Term* f, IoWork* w) {
     return io_tup(e, io_hand(w->hand), io_fail(e, EINVAL, NULL));
   }
   w->made = f[1] < INT32_MAX ? (intptr_t)f[1] : INT32_MAX;
-  w->data = io_mem(malloc((size_t)w->made + 1));
+  w->data = io_mem(malloc((size_t)w->made));
   return io_wait_on(w, (int)w->hand, POLLIN,
     io_tick() + (u64)f[2] * 1000000ull, tcp_poll_more);
 }
