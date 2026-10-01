@@ -153,7 +153,7 @@ function shard_parse(shard: Test[], out: string): Map<string, Got> {
     const head = part.slice(0, nl).trim().split(" ");
     const body = part.slice(nl + 1);
     if (head[0] === "checkup") {
-      const secs = body.split(/^--- \.\/tests\/([a-z0-9_/]+)\.bend ---\n/m);
+      const secs = body.split(/^--- \.\/tests\/([A-Za-z0-9_/]+)\.bend ---\n/m);
       for (let i = 1; i + 1 < secs.length; i += 2) {
         const got = gots.get(secs[i].replace("/", "_"));
         if (got !== undefined) {

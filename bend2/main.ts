@@ -779,6 +779,7 @@ function term_refs(tm: unknown, out: Set<string>): void {
   }
 }
 
+// cli_say writes text to fd, and drops it if the reader has left (EPIPE).
 function cli_say(fd: number, text: string): void {
   try {
     fs.writeSync(fd, text);
@@ -786,7 +787,6 @@ function cli_say(fd: number, text: string): void {
     if ((e as NodeJS.ErrnoException).code !== "EPIPE") {
       throw e;
     }
-    process.exit(0);
   }
 }
 
