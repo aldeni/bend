@@ -3,6 +3,107 @@
 Each release names what changed for a user. `bend update` installs the
 latest one; the GitHub release carries the same notes.
 
+## 2.0.34 (2026-09-28)
+
+- **A shared graph is compared once** (#1071, PR #1151 by Giulio2002):
+  when conversion proves two share cells equal, the second points at the
+  first, so a value used twice on each side is compared once, not walked
+  as a tree. Two Merkle roots of depth 32 over a symbolic leaf, proven
+  equal by `{==}`, check in 0.07 s (they took 2^32 steps). `--verdict`'s
+  kernel does not share yet and runs out of fuel on such a proof.
+
+## 2.0.33 (2026-09-28)
+
+- **Two copies of one term are equal before either unfolds** (#1071, PR
+  #1151 by Giulio2002): a conversion first compares both sides with no def
+  unfolded, then as before. A law proven by induction and used at a fixed
+  size, like `agree(32n, x)` against its written type, checks at once
+  instead of walking a shared chain as a tree of 2^32 steps.
+- **Base opens a value before it copies it**: `U32.min`/`max`, the `F32`
+  helpers, `Char.to_upper`/`to_lower`, `U32.div`/`mod` and `List.sort` match
+  their argument first, so a stuck argument stays one call (#1075).
+- **Base is smaller** (PR #1153 by nicolas-abril, from #1059 by
+  jnadeau207-collab), and `U32.log2` takes five native shifts instead of
+  thirty-two.
+- **Fixes**:
+  - `U32.to_nat` widens to u64 in C, so Nat arithmetic on a u32 local no
+    longer wraps at 2^32 (PR #1142 by Giulio2002).
+  - A shared Array's redirect is read without a race and without a device
+    atomic (PR #1155 by nicolas-abril).
+  - `TCP.recv`, `TCP.recv_bytes` and `TCP.poll` with a max of 0 fail with
+    EINVAL, not a closed peer's `""` (#1121, by aldeni).
+  - Emission does less work per word type and nullary constructor (#1056,
+    by jnadeau207-collab).
+  - `--verdict`: the kernel puts a λ argument into a type annotated with
+    its domain, so a `+` let of `Equal.cong` over a function checks (#1158).
+  - A pure main shows an Array element and a flat value of one type each
+    by its own layout (#1166).
+  - A `CID(k)` in an effect source's comment or string is left alone
+    (#1161, by aldeni).
+
+## 2.0.32 (2026-09-27)
+
+- **One verdict: `ALL PROOFS CHECK` or `SOME PROOFS FAIL`**: `bend f.bend`
+  on a file with no main (or `--check-only`) prints one of the two. A proof
+  holds when bend checks it and it uses no `@unsafe` def and no user foreign
+  code, imports included. `--verdict` (was `--safe`) also rechecks every
+  def with the proven BendTT kernel; it no longer writes `f.bendtt`, and
+  `-o f.bendtt` does. Function-typed terms go to the kernel η-long.
+- **Breaking: `TCP.listen` and `UDP.bind` take the address to bind** (#1088,
+  PR #1098 by oxura): a server no longer listens on every interface.
+- **Breaking: `IO.args()` starts with the program as invoked** (#935), as C's
+  argv does; the arguments start at index 1.
+- **`IO.within` races an action against a deadline** (#1034).
+- **`TCP.send_bytes` and `TCP.recv_bytes`** carry bytes as they are (#846).
+- **`-o f.mjs` writes an ES module** of a Bend file (#1029).
+- **Windows**: `Window.grab` holds the cursor for a first-person camera, and
+  the mouse's motion comes as `Look{dx, dy}` (#921, PR #1073 by
+  nicolas-abril); `Scroll{x, y, dx, dy}` events come from the wheel and the
+  trackpad (#1020, PR #1114 by oxura); macOS input no longer lags (#842);
+  Shift+Tab on X11 gives the Mac's back tab; the Linux window fills a frame
+  by squares, about 6x faster (PR #1115 by costamatheus97).
+- **Fixes**:
+  - A native intrinsic on a nullary def keeps its result layout (#1093,
+    PR #1094 by chiliec).
+  - One file is one module however an import spells its path (#1087,
+    PR #1103 by MattCozendey), and an alias that matches the file name
+    works (#1082).
+  - F32 text rounds once to the nearest f32 on every lane and in literals
+    (#1055); `F32.pow(±1, y)` is 1 on JS as on C (#1060).
+  - A pure main that prints a datatype through a family field builds (#1067).
+  - Two defs with the same body are equal (#1028).
+  - A fallback arm past a datatype's last constructor is dead code (#1091).
+  - An error names a hub def the way you write it (#965), and a `+` binder's
+    error names the right binder (#980).
+  - A compound type argument without parens is a clean parse error (#1110).
+  - A shared Array's redirect reads cannot race its count (#975).
+  - Timers wake in deadline order; clang's version probe no longer fails
+    under load.
+  - `--gpu on` names the reason a CUDA GPU is unusable (#1064).
+  - A JS host tag the type lacks is a clean error (#1105).
+
+## 2.0.31 (2026-09-27)
+
+- **`bend` help: one aligned line per command**: a table builds the list,
+  so every description starts in one column; `--publish [<name>@<version>]`
+  is one line, and `bend guide` is the last command.
+
+## 2.0.30 (2026-09-27)
+
+- **`bend f.bend --safe` rechecks a file with a proven kernel**: after
+  bend's own checker, it translates the file to BendTT (`f.bendtt`) and
+  checks that with `bend2/bendtt.lean`, a small kernel with a Lean proof
+  that no def it accepts has type `Empty` and that live code halts. The
+  first run builds the kernel with Lean v4.34.0 (elan's toolchain, or
+  `$BENDTT` names a built one). `@unsafe` defs stay out of scope, and
+  `--safe` lists them. `-o f.bendtt` only writes the translation.
+- **The kernel has full J**: a rewrite's motive can name the evidence.
+- **base.bend**: the `Array.get`, `Array.swap` and `Map` helpers recurse on
+  their own pieces, so the kernel checks them; a few `.if`/`.bit`/`.deep`
+  helpers and five laws are gone.
+- **The BendTT paper** (`paper/BendTT.pdf`) is rewritten for the new kernel;
+  `bend2/bend.lean` is gone, and `bend2/bendtt.lean` is the only Lean file.
+
 ## 2.0.29 (2026-09-26)
 
 - **The JS lane runs about 2.3x faster** (PR #1061 by nicolas-abril, and a

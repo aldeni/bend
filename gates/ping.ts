@@ -2,12 +2,13 @@
 // The installer, the compiled bend, its daily check and the hub, on this
 // machine: release.ts --dry (the site repo at lib.SITE) builds this host's
 // target into a temp DL_DIR (the archive, install.sh, bend.rb, latest.json);
-// a hub.ts on a random localhost port logs to a temp file; a Bun.serve plays
-// Caddy and GitHub in front of it (/install.sh with the GitHub URL turned
-// into this origin and the https-only flags dropped, since this origin is
-// plain http; the archive under /dl; the store under /0x<hash>; /check
-// and /ping to the hub); then
-// install.sh runs in a temp HOME over the old launcher's layout. Checks:
+// a hub.ts on a random localhost port, at HUB_POW=1 (bend mines against
+// the hub's pow, so a publish costs one hash), logs to a temp file; a
+// Bun.serve plays Caddy and GitHub in front of it (/install.sh with the
+// GitHub URL turned into this origin and the https-only flags dropped,
+// since this origin is plain http; the archive under /dl; the store under
+// /0x<hash>; /check, /ping and /pow.json to the hub); then install.sh runs
+// in a temp HOME over the old launcher's layout. Checks:
 // bashka (SKIP without it) calls the script green; the install replaces the
 // launcher with the executable, drops app/, current, id, last, rep and bad,
 // cleans its temp dir, writes no shell rc, names the version, the PATH line
@@ -25,8 +26,10 @@
 // uname is refused in one line; a 2.0.0-2.0.7 launcher's ping and its
 // latest.json fallback name the version, no sha256 and the move notice; the
 // formula carries the sum; --publish ships LICENSE files, names the license
-// as the hub does, refuses a License/ directory, and every request carries
-// User-Agent: bend/<ver>. SKIP when the site repo is not at lib.SITE.
+// as the hub does, sends no leading byte order mark (a package published
+// from a file with one imports), refuses a License/ directory, and every
+// request carries User-Agent: bend/<ver>. SKIP when the site repo is not at
+// lib.SITE.
 
 import * as child from "node:child_process";
 import * as crypto from "node:crypto";
@@ -176,8 +179,8 @@ const caddy = Bun.serve({
 
 const hub = child.spawn(process.execPath, [path.join(lib.SITE, "apps", "hub",
   "hub.ts")], { stdio: "ignore", env: { ...process.env, HUB_PORT:
-  String(PORT + 1), HUB_STORE: path.join(TMP, "store"), CHECK_LOG: LOG,
-  DL_DIR: DL } });
+  String(PORT + 1), HUB_POW: "1", HUB_STORE: path.join(TMP, "store"),
+  CHECK_LOG: LOG, DL_DIR: DL } });
 try {
   await hub_wait();
   const rel = await lib.exec(process.execPath, [path.join(lib.SITE, "release",
@@ -293,6 +296,14 @@ try {
     && got.ok && await got.text() === lics["sub/LICENSE"]);
   check("the notice names the terms and the shallowest LICENSE's SPDX id",
     spdx.err.includes(TERMS + "License: MIT (LICENSE)\n"));
+  for (const flags of [["--verdict", "--publish"], ["--publish", "--verdict"]]) {
+    const count = seen.length;
+    const run = await bend([path.join(TMP, "sum.bend"), ...flags],
+      { BEND_HUB: ORIGIN, BEND_NO_TELEMETRY: "1" });
+    check(flags.join(" ") + " is refused before publishing: " + run.err,
+      run.code === 1 && run.out === "" && run.err === "bend: --publish"
+      + " takes no other option (see bend --help)\n" && seen.length === count);
+  }
   const ids: [string, string][] = [
     ["SPDX-License-Identifier: MIT\r\n", "MIT (LICENSE)"],
     ["SPDX-License-Identifier: (MIT  OR Apache-2.0)\n",
@@ -322,6 +333,17 @@ try {
     && none.err.includes(TERMS + "License: MIT-0, the default (no LICENSE"
     + " file): https://bend-lang.com/bender/terms#s18.4\nwarning: no file is"
     + " named exactly LICENSE"));
+  const bom  = { "lic_bom.bend": use("two.bend"), "two.bend": two,
+    "LICENSE": "SPDX-License-Identifier: MIT\n" };
+  const mark = await publish("bom",
+    { ...bom, "LICENSE": "\uFEFF" + bom.LICENSE });
+  fs.writeFileSync(path.join(TMP, "bom.bend"), "import Base\nimport "
+    + pkg_hash(bom) + "/two.bend as T\ndef main() -> Nat:\n  T.two\n");
+  const imp  = await bend([path.join(TMP, "bom.bend")], { BEND_HUB: ORIGIN });
+  check("a LICENSE opening with a byte order mark goes without it, so the"
+    + " package imports: " + mark.err + imp.err, mark.code === 0
+    && mark.out.startsWith(pkg_hash(bom) + "\n") && imp.code === 0
+    && imp.out === "2n\n");
   const posts = seen.filter((s) => s.startsWith("POST / ")).length;
   const dir  = await publish("dir", { "lic_dir.bend": use("License/two.bend"),
     "License/two.bend": two });

@@ -1,12 +1,16 @@
 // TCP
 // ===
 
-// The loop parked the request until the socket was readable; a recv that
-// still finds nothing (the socket is non-blocking) parks again.
-function tcp_recv(socket, max, k) {
+// A recv that finds nothing (the socket is non-blocking) parks until the
+// socket is readable. What it finds, read makes a String (io_text) or a
+// List of bytes (io_list).
+function tcp_recv_with(socket, max, k, read) {
+  if (Number(max) === 0) {
+    return io_tup(socket, io_fail(22));
+  }
   const sys = io_sys();
   const fd = socket;
-  const b = new Uint8Array(Math.max(Number(max), 1));
+  const b = new Uint8Array(Number(max));
   const again = sys.mac ? 35 : 11;
   const go = () => {
     const n = Number(sys.recv(fd, sys.ptr(b), Number(max), 0));
@@ -18,13 +22,18 @@ function tcp_recv(socket, max, k) {
       }
       return io_tup(socket, io_fail(code));
     }
-    return io_tup(socket, io_done(io_text(b, n)));
+    return io_tup(socket, io_done(read(b, n)));
   };
   return go();
 }
 
-function tcp_recv_need() {
-  return { read: true };
+function tcp_recv(socket, max, k) {
+  return tcp_recv_with(socket, max, k, io_text);
 }
 
-io_eff(CID(TCP.recv), tcp_recv, tcp_recv_need);
+function tcp_recv_bytes(socket, max, k) {
+  return tcp_recv_with(socket, max, k, io_list);
+}
+
+io_eff(CID(TCP.recv), tcp_recv);
+io_eff(CID(TCP.recv_bytes), tcp_recv_bytes);
